@@ -1,0 +1,10 @@
+{
+  "yaml.schemas": {},
+  "yaml.validate": false,
+  "[yaml]": {
+    "editor.formatOnSave": true
+  }
+}
+
+
+
