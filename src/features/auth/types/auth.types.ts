@@ -11,13 +11,15 @@ export interface RegisterRequest {
   rol?: string;
 }
 
+/**
+ * Respuesta del backend al hacer login
+ * La estructura real del backend es plana, no tiene objeto 'user' anidado
+ */
 export interface AuthResponse {
   token: string;
-  user: {
-    id: string;
-    email: string;
-    nombre: string;
-    apellidos: string;
-    rol: string;
-  };
+  tokenType: string; // "Bearer"
+  expiresIn: number; // Tiempo de expiración en milisegundos
+  email: string;
+  rol: string; // "ADMIN" | "PROFESOR" | "ALUMNO" | "ADMINISTRATIVO"
+  nombre: string; // Nombre completo del usuario
 }
