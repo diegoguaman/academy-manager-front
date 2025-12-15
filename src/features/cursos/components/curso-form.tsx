@@ -1,6 +1,6 @@
 'use client';
 
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
@@ -46,7 +46,7 @@ export function CursoForm({
     register,
     handleSubmit,
     formState: { errors },
-    watch,
+    control,
     setValue,
   } = useForm<CursoFormData>({
     resolver: zodResolver(cursoSchema),
@@ -67,9 +67,10 @@ export function CursoForm({
     queryFn: () => cursoService.getFormatos(),
   });
 
-  const activo = watch('activo', true);
-  const idMateria = watch('idMateria');
-  const idFormato = watch('idFormato');
+  // Usar useWatch en lugar de watch() para compatibilidad con React Compiler
+  const activo = useWatch({ control, name: 'activo', defaultValue: true });
+  const idMateria = useWatch({ control, name: 'idMateria' });
+  const idFormato = useWatch({ control, name: 'idFormato' });
 
   const handleFormSubmit = (data: CursoFormData) => {
     const cursoInput: CursoInput = {

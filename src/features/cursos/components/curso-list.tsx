@@ -25,7 +25,6 @@ export function CursoList() {
         <TableHead>
           <TableRow>
             <TableCell>Nombre</TableCell>
-            <TableCell>Descripción</TableCell>
             <TableCell>Estado</TableCell>
           </TableRow>
         </TableHead>
