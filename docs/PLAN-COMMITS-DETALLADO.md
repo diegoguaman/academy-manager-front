@@ -369,17 +369,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
-    // TODO: Implementar llamada a API
     setIsLoading(true);
     try {
-      // const response = await authService.login(email, password);
-      // setToken(response.token);
-      // setUser(response.user);
-      // localStorage.setItem('token', response.token);
+      // 1. Llamar al servicio de autenticación
+      const response = await authService.login({ email, password });
+      
+      // 2. Validar respuesta
+      if (!response.token) {
+        throw new Error('No se recibió token de autenticación');
+      }
+      if (!response.email || !response.rol || !response.nombre) {
+        throw new Error('Datos de usuario incompletos en la respuesta');
+      }
+      
+      // 3. Mapear respuesta del backend (estructura plana) a User interno
+      const userData: User = {
+        id: response.email, // Backend no envía ID, usamos email temporalmente
+        email: response.email,
+        nombre: response.nombre,
+        rol: response.rol as User['rol'],
+      };
+      
+      // 4. Guardar en estado React
+      setToken(response.token);
+      setUser(userData);
+      
+      // 5. Sincronizar localStorage + cookies (para middleware SSR)
+      setAuthToken(response.token);
+      
+      // 6. Redirigir al dashboard
+      router.push('/dashboard');
+    } catch (error) {
+      // Limpiar estado y relanzar error
+      setToken(null);
+      setUser(null);
+      setAuthToken(null);
+      throw error;
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [router]);
 
   const logout = useCallback(() => {
     setToken(null);
@@ -651,50 +680,145 @@ npm install axios
 
 **Archivos**:
 
+**.env.local** (crear este archivo en la raíz del proyecto):
+```env
+# URL base del backend REST API
+NEXT_PUBLIC_API_URL=http://localhost:8080
+
+# GraphQL URL (opcional)
+NEXT_PUBLIC_GRAPHQL_URL=http://localhost:8080/graphql
+
+# Nombre de la aplicación
+NEXT_PUBLIC_APP_NAME=Academia Multi-Centro
+```
+
+**Nota**: El prefijo `NEXT_PUBLIC_` es obligatorio. Next.js solo expone variables con este prefijo al cliente (browser).
+
+**src/shared/lib/config/env.ts**:
+```typescript
+/**
+ * Configuración de variables de entorno
+ * Lee de process.env (configuradas en .env.local)
+ */
+export const env = {
+  apiUrl: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080',
+  graphqlUrl:
+    process.env.NEXT_PUBLIC_GRAPHQL_URL || 'http://localhost:8080/graphql',
+  appName: process.env.NEXT_PUBLIC_APP_NAME || 'Academia Multi-Centro',
+} as const;
+```
+
 **src/shared/lib/api/client.ts**:
 ```typescript
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 import { env } from '@/shared/lib/config/env';
 
+/**
+ * Cliente HTTP configurado con Axios
+ * baseURL se lee de .env.local (NEXT_PUBLIC_API_URL)
+ */
 export const apiClient = axios.create({
-  baseURL: env.apiUrl,
+  baseURL: env.apiUrl, // http://localhost:8080
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// Interceptor para agregar token
-apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+/**
+ * Interceptor de request: Agrega token a todas las peticiones
+ * Lee el token de localStorage y lo agrega como Bearer token
+ */
+apiClient.interceptors.request.use(
+  (config) => {
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('token');
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
   }
-  return config;
-});
+);
+
+/**
+ * Interceptor de response: Maneja errores HTTP de forma centralizada
+ * Convierte errores de Axios en Error con mensajes claros
+ */
+apiClient.interceptors.response.use(
+  (response) => {
+    return response;
+  },
+  (error: AxiosError) => {
+    if (!error.response) {
+      return Promise.reject(
+        new Error('No se pudo conectar con el servidor. Verifica tu conexión.')
+      );
+    }
+
+    const status = error.response.status;
+    const data = error.response.data as { message?: string } | undefined;
+
+    switch (status) {
+      case 401:
+        return Promise.reject(new Error(data?.message || 'No autorizado'));
+      case 403:
+        return Promise.reject(new Error(data?.message || 'Acceso denegado'));
+      case 404:
+        return Promise.reject(new Error(data?.message || 'Recurso no encontrado'));
+      case 500:
+        return Promise.reject(new Error(data?.message || 'Error interno del servidor'));
+      default:
+        return Promise.reject(new Error(data?.message || `Error: ${status}`));
+    }
+  }
+);
 ```
 
 **src/features/auth/types/auth.types.ts**:
 ```typescript
+/**
+ * Request para login
+ */
 export interface LoginRequest {
   email: string;
   password: string;
 }
 
+/**
+ * Request para registro
+ */
 export interface RegisterRequest {
   email: string;
   password: string;
   nombre: string;
+  apellidos: string;
   rol?: string;
 }
 
+/**
+ * Respuesta del backend al hacer login
+ * IMPORTANTE: El backend devuelve estructura plana, NO tiene objeto 'user' anidado
+ * 
+ * Respuesta real del backend:
+ * {
+ *   "token": "eyJhbGci...",
+ *   "tokenType": "Bearer",
+ *   "expiresIn": 86400000,
+ *   "email": "user@example.com",
+ *   "rol": "ADMIN",
+ *   "nombre": "Nombre Completo"
+ * }
+ */
 export interface AuthResponse {
   token: string;
-  user: {
-    id: string;
-    email: string;
-    nombre: string;
-    rol: string;
-  };
+  tokenType: string; // "Bearer"
+  expiresIn: number; // Tiempo de expiración en milisegundos
+  email: string;
+  rol: string; // "ADMIN" | "PROFESOR" | "ALUMNO" | "ADMINISTRATIVO"
+  nombre: string; // Nombre completo del usuario
 }
 ```
 
@@ -703,26 +827,155 @@ export interface AuthResponse {
 import { apiClient } from '@/shared/lib/api/client';
 import type { LoginRequest, RegisterRequest, AuthResponse } from '../types/auth.types';
 
+/**
+ * Servicio de autenticación
+ * Encapsula todas las llamadas HTTP relacionadas con auth
+ */
 export const authService = {
+  /**
+   * Login: POST /api/auth/login
+   * @param data - Email y password
+   * @returns AuthResponse con token y datos del usuario
+   */
   async login(data: LoginRequest): Promise<AuthResponse> {
-    const response = await apiClient.post<AuthResponse>('/api/auth/login', data);
-    return response.data;
+    try {
+      // POST http://localhost:8080/api/auth/login
+      const response = await apiClient.post<AuthResponse>('/api/auth/login', data);
+      
+      if (!response || !response.data) {
+        throw new Error('Respuesta inválida del servidor');
+      }
+
+      return response.data;
+    } catch (error) {
+      // Manejo específico de errores HTTP
+      if (error && typeof error === 'object' && 'response' in error) {
+        const axiosError = error as { response?: { status?: number; data?: unknown } };
+        if (axiosError.response?.status === 401) {
+          throw new Error('Credenciales inválidas');
+        }
+        if (axiosError.response?.status === 404) {
+          throw new Error('Endpoint de autenticación no encontrado');
+        }
+        if (axiosError.response?.status === 500) {
+          throw new Error('Error interno del servidor');
+        }
+      }
+      throw error;
+    }
   },
 
+  /**
+   * Register: POST /api/auth/register
+   * @param data - Datos del nuevo usuario
+   * @returns AuthResponse con token y datos del usuario
+   */
   async register(data: RegisterRequest): Promise<AuthResponse> {
-    const response = await apiClient.post<AuthResponse>(
-      '/api/auth/register',
-      data
-    );
-    return response.data;
+    try {
+      const response = await apiClient.post<AuthResponse>(
+        '/api/auth/register',
+        data
+      );
+
+      if (!response || !response.data) {
+        throw new Error('Respuesta inválida del servidor');
+      }
+
+      return response.data;
+    } catch (error) {
+      if (error && typeof error === 'object' && 'response' in error) {
+        const axiosError = error as { response?: { status?: number; data?: unknown } };
+        if (axiosError.response?.status === 409) {
+          throw new Error('El usuario ya existe');
+        }
+      }
+      throw error;
+    }
   },
 };
 ```
 
 **Explicación**:
-- Servicio para autenticación usando REST
-- Axios con interceptors para JWT
-- Type-safe con TypeScript
+- **Variable de entorno**: `NEXT_PUBLIC_API_URL` en `.env.local` contiene la URL base
+- **Cliente HTTP**: Axios configurado con baseURL y interceptors
+- **Interceptors**: Agregan token automáticamente a requests y manejan errores
+- **Type-safe**: TypeScript garantiza que los tipos coincidan
+- **Estructura real**: El backend devuelve estructura plana, no objeto `user` anidado
+
+**Flujo de la petición**:
+1. `authService.login()` llama a `apiClient.post('/api/auth/login', data)`
+2. `apiClient` construye URL: `baseURL + '/api/auth/login'` = `http://localhost:8080/api/auth/login`
+3. Interceptor agrega token si existe en localStorage
+4. Backend responde con `{ token, email, rol, nombre }`
+5. `authService` devuelve solo `response.data`
+
+---
+
+### Commit 4.1.5: Configurar Material UI para SSR (Opcional pero recomendado)
+**Mensaje**: `fix: configurar Material UI con ThemeProvider para evitar errores de hidratación`
+
+**Problema**: Material UI puede causar errores de hidratación en Next.js App Router debido a diferencias entre SSR y cliente.
+
+**Solución**:
+
+**src/shared/providers/material-ui-provider.tsx**:
+```typescript
+'use client';
+
+import { ThemeProvider, createTheme } from '@mui/material/styles';
+import CssBaseline from '@mui/material/CssBaseline';
+
+const theme = createTheme({
+  palette: {
+    primary: { main: '#1976d2' },
+    secondary: { main: '#dc004e' },
+  },
+});
+
+export function MaterialUIProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      {children}
+    </ThemeProvider>
+  );
+}
+```
+
+**Integrar en `src/app/layout.tsx`**:
+```typescript
+import { MaterialUIProvider } from '@/shared/providers/material-ui-provider';
+
+export default function RootLayout({ children }) {
+  return (
+    <html>
+      <body>
+        <MaterialUIProvider>
+          {/* otros providers */}
+          {children}
+        </MaterialUIProvider>
+      </body>
+    </html>
+  );
+}
+```
+
+**next.config.ts**:
+```typescript
+const nextConfig: NextConfig = {
+  transpilePackages: ['@mui/material', '@mui/system', '@mui/icons-material'],
+};
+```
+
+**Explicación**:
+- `ThemeProvider` asegura contexto de tema consistente entre servidor y cliente
+- `CssBaseline` normaliza estilos base
+- `transpilePackages` permite que Next.js transpile correctamente Material UI v7
+- Ver documentación completa en `docs/ERROR-HIDRATACION-MATERIAL-UI.md`
 
 ---
 
