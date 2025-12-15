@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -23,7 +24,7 @@ const registerSchema = z.object({
   password: z.string().min(6, { message: 'Mínimo 6 caracteres' }),
   nombre: z.string().min(2, { message: 'Mínimo 2 caracteres' }),
   apellidos: z.string().min(2, { message: 'Mínimo 2 caracteres' }),
-  rol: z.enum(ROLE_VALUES).optional(),
+  rol: z.enum(ROLE_VALUES).or(z.literal('')).optional(),
 });
 
 type RegisterFormData = z.infer<typeof registerSchema>;
@@ -33,7 +34,7 @@ type RegisterFormData = z.infer<typeof registerSchema>;
  */
 export function RegisterForm() {
   const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const router = useRouter();
   const {
     register,
     handleSubmit,
@@ -41,16 +42,22 @@ export function RegisterForm() {
     reset,
   } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
-    defaultValues: { rol: undefined },
+    defaultValues: { rol: '' },
   });
 
   const handleRegister = async (formData: RegisterFormData) => {
     setError(null);
-    setSuccessMessage(null);
     try {
-      await authService.register(formData as RegisterRequest);
-      setSuccessMessage('Registro exitoso. Ahora puedes iniciar sesión.');
+      const payload: RegisterRequest = {
+        email: formData.email,
+        password: formData.password,
+        nombre: formData.nombre,
+        apellidos: formData.apellidos,
+        rol: formData.rol || undefined,
+      };
+      await authService.register(payload);
       reset();
+      router.push('/login');
     } catch (err) {
       const message =
         err instanceof Error
@@ -65,11 +72,6 @@ export function RegisterForm() {
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
-        </Alert>
-      )}
-      {successMessage && (
-        <Alert severity="success" sx={{ mb: 2 }}>
-          {successMessage}
         </Alert>
       )}
       <TextField
