@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { AuthProvider } from '@/shared/contexts/auth-context';
 import { ReactQueryProvider } from '@/shared/lib/react-query/provider';
 import { MaterialUIProvider } from '@/shared/providers/material-ui-provider';
+import { NotificationContainer } from '@/shared/components/notification/notification-container';
 import "./globals.css";
 
 const geistSans = Geist({
@@ -33,7 +34,10 @@ export default function RootLayout({
       >
         <MaterialUIProvider>
           <ReactQueryProvider>
-            <AuthProvider>{children}</AuthProvider>
+            <AuthProvider>
+              {children}
+              <NotificationContainer />
+            </AuthProvider>
           </ReactQueryProvider>
         </MaterialUIProvider>
       </body>
