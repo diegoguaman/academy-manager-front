@@ -1521,22 +1521,61 @@ export function NotificationContainer() {
 
 ## 📅 Día 6: Más Features y Optimizaciones
 
-### Commit 6.1: Feature de Alumnos (similar a Cursos)
-**Mensaje**: `feat: implementar CRUD completo de alumnos siguiendo patrón de cursos`
+> **📚 Documentación detallada**: Ver `docs/dia6/GUIA-IMPLEMENTACION-ALUMNO.md` para ejemplo completo paso a paso.
 
-**Estructura similar a cursos**:
-- `src/features/alumnos/types/`
-- `src/features/alumnos/services/`
-- `src/features/alumnos/hooks/`
-- `src/features/alumnos/components/`
+### Commit 6.1: Crear utilidades responsive
+**Mensaje**: `feat: crear hook y utilidades para diseño responsive`
+
+**Archivos**: Ver `docs/dia6/RESPONSIVE-UTILITIES.md`
 
 **Explicación**:
-- Reutilizar mismo patrón
-- Feature independence
+- Hook `useResponsive` para detectar breakpoints
+- Componente `ResponsiveContainer` para layouts adaptativos
+- Evita repetir lógica de media queries
 
 ---
 
-### Commit 6.2: Feature de Matrículas
+### Commit 6.2: Implementar manejo centralizado de errores
+**Mensaje**: `feat: implementar sistema centralizado de manejo de errores con notificaciones`
+
+**Archivos**: Ver `docs/dia6/MANEJO-ERRORES.md`
+
+**Explicación**:
+- Error handler para GraphQL
+- Integración con notificaciones Zustand
+- Mensajes de error user-friendly
+
+---
+
+### Commit 6.3: Crear Home y Navbar
+**Mensaje**: `feat: crear página home y navbar responsive con navegación`
+
+**Archivos**: Ver `docs/dia6/HOME-NAVBAR.md`
+
+**Explicación**:
+- Navbar con Material UI AppBar
+- Home con dashboard básico
+- Navegación protegida por roles
+
+---
+
+### Commit 6.4: Feature de Alumnos (CRUD completo)
+**Mensaje**: `feat: implementar CRUD completo de alumnos siguiendo patrón de cursos`
+
+**Estructura**:
+- `src/features/alumnos/types/alumno.types.ts`
+- `src/features/alumnos/services/alumno-service.ts`
+- `src/features/alumnos/hooks/use-alumnos.ts`
+- `src/features/alumnos/hooks/use-alumno-mutations.ts`
+- `src/features/alumnos/components/alumno-list.tsx`
+- `src/features/alumnos/components/alumno-form.tsx`
+- `src/app/dashboard/alumno/page.tsx`
+
+**Documentación completa**: Ver `docs/dia6/GUIA-IMPLEMENTACION-ALUMNO.md`
+
+---
+
+### Commit 6.5: Feature de Matrículas
 **Mensaje**: `feat: implementar gestión de matrículas con relaciones complejas`
 
 **Complejidad adicional**:
@@ -1544,9 +1583,11 @@ export function NotificationContainer() {
 - Estados: EstadoPago enum
 - Validaciones: Fechas, importes
 
+**Ver**: `docs/dia6/ENTIDADES-PENDIENTES.md` para detalles
+
 ---
 
-### Commit 6.3: Optimizaciones de rendimiento
+### Commit 6.6: Optimizaciones de rendimiento
 **Mensaje**: `perf: implementar optimizaciones de rendimiento (memo, lazy loading)`
 
 **Optimizaciones**:
@@ -1554,16 +1595,6 @@ export function NotificationContainer() {
 - useMemo/useCallback donde sea necesario
 - Lazy loading de rutas
 - Next.js Image component
-
----
-
-### Commit 6.4: Manejo de errores global
-**Mensaje**: `feat: implementar sistema centralizado de manejo de errores`
-
-**Archivos**:
-- Error Boundary
-- Error handler global
-- Página de error personalizada
 
 ---
 
