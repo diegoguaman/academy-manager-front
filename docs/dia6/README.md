@@ -97,6 +97,20 @@ Este directorio contiene toda la documentación necesaria para completar el Día
 
 ---
 
+### 8. 🔐 Solución de Token Expirado
+**Archivo**: `TOKEN-EXPIRADO-SOLUCION.md`
+
+**Contenido**:
+- Problema original con tokens expirados
+- Análisis de intentos fallidos
+- Solución final implementada
+- Lecciones aprendidas
+- Flujo completo documentado
+
+**Cuándo usar**: Para entender cómo funciona el manejo de tokens expirados, o cuando necesites debuggear problemas de autenticación.
+
+---
+
 ## 🚀 Orden Recomendado de Lectura
 
 ### Si eres nuevo en el proyecto:
@@ -109,6 +123,10 @@ Este directorio contiene toda la documentación necesaria para completar el Día
 1. `GUIA-IMPLEMENTACION-ALUMNO.md` - Seguir el patrón
 2. `ENTIDADES-PENDIENTES.md` - Ver qué falta
 3. `MANEJO-ERRORES.md` - Integrar manejo de errores
+
+### Si tienes problemas de autenticación:
+1. `TOKEN-EXPIRADO-SOLUCION.md` - Entender manejo de tokens expirados
+2. `MANEJO-ERRORES.md` - Ver sistema de errores completo
 
 ### Si vas a trabajar en UI:
 1. `HOME-NAVBAR.md` - Ver navegación
@@ -147,6 +165,7 @@ Después de leer la documentación relevante, deberías poder:
 - [ ] Crear componentes responsive
 - [ ] Manejar errores correctamente
 - [ ] Crear navegación con roles
+- [ ] Entender manejo de tokens expirados
 - [ ] Documentar tu trabajo
 
 ---

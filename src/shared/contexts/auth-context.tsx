@@ -37,6 +37,32 @@ function getAuthToken(): string | null {
   return localStorage.getItem('token');
 }
 
+/**
+ * Helper para guardar datos del usuario en localStorage
+ */
+function setUserData(user: User | null): void {
+  if (typeof window === 'undefined') return;
+  if (user) {
+    localStorage.setItem('user', JSON.stringify(user));
+  } else {
+    localStorage.removeItem('user');
+  }
+}
+
+/**
+ * Helper para obtener datos del usuario desde localStorage
+ */
+function getUserData(): User | null {
+  if (typeof window === 'undefined') return null;
+  const storedUser = localStorage.getItem('user');
+  if (!storedUser) return null;
+  try {
+    return JSON.parse(storedUser) as User;
+  } catch {
+    return null;
+  }
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
@@ -45,14 +71,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const storedToken = getAuthToken();
-    if (storedToken) {
+    const storedUser = getUserData();
+    
+    if (storedToken && storedUser) {
+      // Restaurar sesión desde localStorage
       setToken(storedToken);
-      // TODO: Validar token con backend y cargar datos de usuario
-      // Por ahora solo verificamos que existe
-      setIsLoading(false);
-    } else {
-      setIsLoading(false);
+      setUser(storedUser);
+    } else if (storedToken && !storedUser) {
+      // Token existe pero no hay datos de usuario (sesión inconsistente)
+      // Limpiar token inválido
+      setAuthToken(null);
     }
+    
+    setIsLoading(false);
   }, []);
 
   const login = useCallback(
@@ -93,9 +124,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setToken(authToken);
         setUser(userData);
 
-        // 5. Sincronizar token en localStorage y cookies
-        // Esto permite que tanto el middleware (cookies) como los interceptores (localStorage) funcionen
+        // 5. Persistir token y datos de usuario en localStorage
+        // Esto permite restaurar la sesión al recargar la página
         setAuthToken(authToken);
+        setUserData(userData);
 
         // 6. Redirigir al dashboard después de login exitoso
         router.push('/dashboard');
@@ -129,6 +161,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setToken(null);
     setUser(null);
     setAuthToken(null);
+    setUserData(null);
     router.push('/login');
   }, [router]);
 

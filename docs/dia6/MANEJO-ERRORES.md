@@ -566,8 +566,145 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
 ---
 
+---
+
+## 🔐 Manejo de Token Expirado (401 Unauthorized)
+
+Cuando el backend responde con un error 401 (token expirado o inválido), la aplicación debe:
+1. Limpiar todos los datos de autenticación (token, usuario)
+2. Redirigir automáticamente al usuario a la página de login
+
+### Implementación
+
+**Archivo**: `src/shared/lib/utils/auth.utils.ts`
+
+Este módulo proporciona funciones utilitarias que pueden ser llamadas desde interceptors HTTP sin necesidad de acceso al contexto de React:
+
+```typescript
+/**
+ * Limpia todos los datos de autenticación del cliente
+ */
+export function clearAuthData(): void {
+  // Elimina token y usuario de localStorage
+  // Elimina cookie de token
+}
+
+/**
+ * Redirige al usuario a la página de login
+ * Limpia los datos de autenticación antes de redirigir
+ */
+export function redirectToLogin(redirectPath = '/login'): void {
+  clearAuthData();
+  window.location.href = redirectPath;
+}
+
+/**
+ * Maneja errores de autenticación (401 Unauthorized)
+ * Limpia la sesión y redirige al login
+ */
+export function handleAuthError(errorMessage?: string): void {
+  // Log del error si estamos en desarrollo
+  // Limpiar datos y redirigir
+  redirectToLogin();
+}
+```
+
+### Integración en Axios Interceptor
+
+**Archivo**: `src/shared/lib/api/client.ts`
+
+El interceptor de respuesta de axios detecta errores 401 y automáticamente limpia la sesión y redirige:
+
+```typescript
+import { handleAuthError } from '@/shared/lib/utils/auth.utils';
+
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error: AxiosError) => {
+    if (!error.response) {
+      return Promise.reject(/* error de conexión */);
+    }
+
+    const status = error.response.status;
+
+    switch (status) {
+      case 401:
+        // Token expirado o inválido
+        const errorMessage = data?.message || 'Token expirado o inválido';
+        handleAuthError(errorMessage); // Limpia sesión y redirige a /login
+        return Promise.reject(new Error(errorMessage));
+      // ... otros casos
+    }
+  }
+);
+```
+
+### Integración en GraphQL Client
+
+**Archivo**: `src/shared/lib/graphql/client.ts`
+
+El cliente GraphQL también maneja errores 401:
+
+```typescript
+import { handleAuthError } from '@/shared/lib/utils/auth.utils';
+
+export async function graphqlRequest<T>(...): Promise<T> {
+  try {
+    return await graphqlClient.request<T>(query, variables);
+  } catch (error) {
+    if (error instanceof ClientError) {
+      const statusCode = error.response?.status;
+      if (statusCode === 401) {
+        handleAuthError(error.message);
+        throw new Error('Token expirado o inválido');
+      }
+    }
+    throw error;
+  }
+}
+```
+
+### Flujo Completo
+
+1. **Usuario hace una petición** con token expirado
+2. **Backend responde 401** con mensaje: "JWT validation failed: Token has expired"
+3. **Interceptor detecta 401** en la respuesta
+4. **Se llama `handleAuthError()`** que:
+   - Limpia `localStorage` (token y usuario)
+   - Elimina cookie de token
+   - Redirige a `/login` usando `window.location.href`
+5. **Usuario es redirigido** a la página de login
+6. **Middleware detecta** que no hay token y permite el acceso a la ruta pública
+
+### ¿Por qué no usar el router de Next.js?
+
+Los interceptors HTTP (axios, GraphQL) se ejecutan en un contexto donde no tenemos acceso directo al router de Next.js. Por eso usamos `window.location.href` para la redirección.
+
+### Logs del Backend
+
+Cuando el token expira, verás logs como estos en el backend:
+
+```
+ERROR c.a.a.security.JwtAuthenticationFilter : JWT validation failed: Token has expired
+```
+
+El frontend maneja automáticamente estos errores sin necesidad de código adicional en los componentes.
+
+---
+
+---
+
+## 📖 Documentación Relacionada
+
+Para detalles completos sobre la solución implementada para manejar tokens expirados, ver:
+- **[TOKEN-EXPIRADO-SOLUCION.md](./TOKEN-EXPIRADO-SOLUCION.md)**: Documentación completa del problema, intentos fallidos y solución final
+
+---
+
 ## 📚 Referencias
 
 - [GraphQL Error Handling](https://graphql.org/learn/validation/)
 - [React Error Boundaries](https://react.dev/reference/react/Component#catching-rendering-errors-with-an-error-boundary)
+- [Axios Interceptors](https://axios-http.com/docs/interceptors)
+- [Axios Interceptors](https://axios-http.com/docs/interceptors)
 

@@ -15,6 +15,16 @@ export function Sidebar() {
             <ListItemText primary="Cursos" />
           </ListItemButton>
         </ListItem>
+        <ListItem>
+          <ListItemButton>
+            <ListItemText primary="Cursos" />
+          </ListItemButton>
+        </ListItem>
+        <ListItem>
+          <ListItemButton>
+            <ListItemText primary="Cursos" />
+          </ListItemButton>
+        </ListItem>
         {/* Más items */}
       </List>
     </Drawer>

@@ -40,9 +40,25 @@ apiClient.interceptors.response.use(
     // Manejar diferentes códigos de estado
     const status = error.response.status;
     const data = error.response.data as { message?: string } | undefined;
+    const url = error.config?.url || '';
 
     switch (status) {
       case 401:
+        // No limpiar sesión si es una petición de login/register (401 esperado por credenciales incorrectas)
+        const isAuthEndpoint = url.includes('/api/auth/login') || url.includes('/api/auth/register');
+        
+        if (!isAuthEndpoint && typeof window !== 'undefined') {
+          console.warn('[Axios] Token expirado detectado (401), redirigiendo a login');
+          // Token expirado: limpiar sesión y redirigir a login
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          document.cookie = 'token=; path=/; max-age=0; SameSite=Lax';
+          document.cookie = 'token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
+          
+          // Redirigir a login usando replace para evitar que el usuario pueda volver atrás
+          window.location.replace('/login');
+        }
+        
         return Promise.reject(new Error(data?.message || 'No autorizado'));
       case 403:
         return Promise.reject(new Error(data?.message || 'Acceso denegado'));
